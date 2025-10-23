@@ -29,9 +29,22 @@ export {
   ComponentType,
 } from './types/workflow';
 
+// Types - Validation
+export {
+  SolutionValidationResult,
+  ValidationIssue,
+  ValidationSeverity,
+  WorkflowValidationResults,
+  ComponentValidationResults,
+  SecurityValidationResults,
+  MetadataValidationResults,
+  QualityValidationResults,
+} from './types/validation';
+
 // Services
 export { SolutionService } from './services/solution-service';
 export { WorkflowService } from './services/workflow-service';
+export { ValidationService } from './services/validation-service';
 
 // Utils
 export { HttpClient } from './utils/http-client';
