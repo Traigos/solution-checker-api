@@ -1,5 +1,5 @@
 import { HttpClient } from '../utils/http-client';
-import { Solution, SolutionQueryOptions, SolutionComponent, DataverseResponse } from '../types/solution';
+import { Solution, SolutionQueryOptions, SolutionComponent, DataverseResponse, Entity, Attribute } from '../types/solution';
 import { ComponentType } from '../types/workflow';
 
 /**
@@ -380,6 +380,222 @@ export class SolutionService {
     }
 
     return false;
+  }
+
+  /**
+   * Update the description of an attribute
+   * @param attributeId The unique identifier (MetadataId) of the attribute (GUID)
+   * @param description The new description for the attribute
+   * @returns Promise<void>
+   */
+  async updateAttributeDescription(attributeId: string, description: string): Promise<void> {
+    // First, get the attribute metadata to determine the entity
+    const attributeMetadataUrl = `/EntityDefinitions/Attributes(${attributeId})`;
+
+    try {
+      const attributeResponse = await this.httpClient.get<Attribute>(attributeMetadataUrl);
+      const attribute = attributeResponse.data;
+
+      if (!attribute) {
+        throw new Error(`Attribute ${attributeId} not found`);
+      }
+
+      // Update the attribute description
+      // We need to use the EntityLogicalName and AttributeLogicalName
+      const entityLogicalName = attribute.EntityLogicalName;
+      const attributeLogicalName = attribute.LogicalName;
+
+      if (!entityLogicalName || !attributeLogicalName) {
+        throw new Error(`Could not determine entity or attribute logical name for attribute ${attributeId}`);
+      }
+
+      // Update the attribute using the entity and attribute logical names
+      const updateUrl = `/EntityDefinitions(LogicalName='${entityLogicalName}')/Attributes(LogicalName='${attributeLogicalName}')`;
+
+      // Use PUT to update the attribute metadata
+      await this.httpClient.put(updateUrl, {
+        Description: {
+          '@odata.type': 'Microsoft.Dynamics.CRM.Label',
+          LocalizedLabels: [
+            {
+              '@odata.type': 'Microsoft.Dynamics.CRM.LocalizedLabel',
+              Label: description,
+              LanguageCode: 1033 // English
+            }
+          ]
+        }
+      });
+
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        throw new Error(`Attribute ${attributeId} not found`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Update the description of an entity/table
+   * @param entityId The unique identifier (MetadataId) of the entity (GUID)
+   * @param description The new description for the entity
+   * @returns Promise<void>
+   */
+  async updateEntityDescription(entityId: string, description: string): Promise<void> {
+    // First, get the entity metadata to get the logical name
+    const entityMetadataUrl = `/EntityDefinitions(${entityId})`;
+
+    try {
+      const entityResponse = await this.httpClient.get<Entity>(entityMetadataUrl);
+      const entity = entityResponse.data;
+
+      if (!entity) {
+        throw new Error(`Entity ${entityId} not found`);
+      }
+
+      const entityLogicalName = entity.LogicalName;
+
+      if (!entityLogicalName) {
+        throw new Error(`Could not determine entity logical name for entity ${entityId}`);
+      }
+
+      // Update the entity using the logical name
+      const updateUrl = `/EntityDefinitions(LogicalName='${entityLogicalName}')`;
+
+      // Use PUT to update the entity metadata
+      await this.httpClient.put(updateUrl, {
+        Description: {
+          '@odata.type': 'Microsoft.Dynamics.CRM.Label',
+          LocalizedLabels: [
+            {
+              '@odata.type': 'Microsoft.Dynamics.CRM.LocalizedLabel',
+              Label: description,
+              LanguageCode: 1033 // English
+            }
+          ]
+        }
+      });
+
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        throw new Error(`Entity ${entityId} not found`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get all tables/entities modified by solution that are missing descriptions
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise with array of entities missing descriptions
+   */
+  async allTablesModifiedBySolutionMissingDescription(solutionId: string): Promise<Entity[]> {
+    // Get all entity components from the solution (componenttype = 1)
+    const components = await this.getSolutionComponentsBySolutionId(solutionId, {
+      $filter: `componenttype eq ${ComponentType.Entity}`,
+      $select: ['objectid', 'componenttype']
+    });
+
+    if (components.length === 0) {
+      return [];
+    }
+
+    const entitiesMissingDescription: Entity[] = [];
+
+    // Check each entity for missing description
+    for (const component of components) {
+      if (component.objectid) {
+        try {
+          // Get entity metadata
+          const entityUrl = `/EntityDefinitions(${component.objectid})`;
+          const entityResponse = await this.httpClient.get<Entity>(entityUrl);
+          const entity = entityResponse.data;
+
+          // Check if description is missing or empty
+          const hasDescription = entity.Description?.LocalizedLabels?.some(
+            label => label.Label && label.Label.trim().length > 0
+          );
+
+          if (!hasDescription) {
+            entitiesMissingDescription.push(entity);
+          }
+        } catch (error) {
+          // Skip if we can't get entity metadata
+          continue;
+        }
+      }
+    }
+
+    return entitiesMissingDescription;
+  }
+
+  /**
+   * Check if Solution Checker has been run on a solution
+   * Checks for the existence of analysis jobs for the given solution
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<boolean> - true if Solution Checker has been run on this solution
+   */
+  async hasSolutionCheckerBeenRun(solutionId: string): Promise<boolean> {
+    try {
+      // Query for analysis jobs related to this solution
+      // The msdyn_analysisjob entity stores Solution Checker job information
+      const analysisJobsUrl = `/msdyn_analysisjobs?$filter=_msdyn_solutionhealthruleset_value eq '${solutionId}'&$top=1&$select=msdyn_analysisjobid`;
+
+      const response = await this.httpClient.get<DataverseResponse<any>>(analysisJobsUrl);
+
+      // If we find any analysis jobs, the checker has been run
+      if (response.data.value && response.data.value.length > 0) {
+        return true;
+      }
+
+      // Also check msdyn_analysiscomponent which stores component-level results
+      const analysisComponentsUrl = `/msdyn_analysiscomponents?$filter=_msdyn_solutionid_value eq '${solutionId}'&$top=1&$select=msdyn_analysiscomponentid`;
+
+      const componentsResponse = await this.httpClient.get<DataverseResponse<any>>(analysisComponentsUrl);
+
+      return componentsResponse.data.value && componentsResponse.data.value.length > 0;
+
+    } catch (error: any) {
+      // If the entities don't exist (404) or we can't query them, assume checker hasn't been run
+      if (error.response && (error.response.status === 404 || error.response.status === 401)) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Run Solution Checker on a solution
+   * Initiates an analysis job to check the solution for issues
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<void>
+   */
+  async runSolutionChecker(solutionId: string): Promise<void> {
+    // Get the solution to verify it exists
+    const solution = await this.getSolutionById(solutionId, {
+      $select: ['solutionid', 'uniquename', 'friendlyname']
+    });
+
+    if (!solution) {
+      throw new Error(`Solution ${solutionId} not found`);
+    }
+
+    try {
+      // Call the Dataverse action to run the solution checker
+      // The action name is typically 'Microsoft.Dynamics.CRM.msdyn_AnalyzeSolution'
+      const actionUrl = '/msdyn_AnalyzeSolution';
+
+      await this.httpClient.post(actionUrl, {
+        SolutionName: solution.uniquename,
+        SolutionId: solutionId
+      });
+
+    } catch (error: any) {
+      // If the action doesn't exist or isn't available
+      if (error.response && error.response.status === 404) {
+        throw new Error('Solution Checker action is not available in this environment. Ensure the Solution Checker solution is installed.');
+      }
+      throw error;
+    }
   }
 
   /**

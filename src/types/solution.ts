@@ -132,6 +132,101 @@ export interface SolutionComponent {
 }
 
 /**
+ * Entity interface
+ * Represents a Dataverse table/entity
+ */
+export interface Entity {
+  /** Metadata ID of the entity */
+  MetadataId?: string;
+
+  /** Logical name of the entity */
+  LogicalName?: string;
+
+  /** Schema name of the entity */
+  SchemaName?: string;
+
+  /** Display name of the entity */
+  DisplayName?: {
+    LocalizedLabels?: Array<{
+      Label?: string;
+      LanguageCode?: number;
+    }>;
+  };
+
+  /** Description of the entity */
+  Description?: {
+    LocalizedLabels?: Array<{
+      Label?: string;
+      LanguageCode?: number;
+    }>;
+  };
+
+  /** Entity type code */
+  ObjectTypeCode?: number;
+
+  /** Primary ID attribute */
+  PrimaryIdAttribute?: string;
+
+  /** Primary name attribute */
+  PrimaryNameAttribute?: string;
+
+  /** Table type (0 = Standard, 1 = Activity, 2 = Virtual) */
+  TableType?: string;
+
+  /** Ownership type (0 = None, 1 = UserOwned, 2 = TeamOwned, 4 = OrganizationOwned) */
+  OwnershipType?: number;
+
+  /** Is custom entity */
+  IsCustomEntity?: boolean;
+
+  /** Is managed */
+  IsManaged?: boolean;
+}
+
+/**
+ * Attribute interface
+ * Represents a Dataverse table column/attribute
+ */
+export interface Attribute {
+  /** Metadata ID of the attribute */
+  MetadataId?: string;
+
+  /** Logical name of the attribute */
+  LogicalName?: string;
+
+  /** Schema name of the attribute */
+  SchemaName?: string;
+
+  /** Entity logical name that this attribute belongs to */
+  EntityLogicalName?: string;
+
+  /** Display name of the attribute */
+  DisplayName?: {
+    LocalizedLabels?: Array<{
+      Label?: string;
+      LanguageCode?: number;
+    }>;
+  };
+
+  /** Description of the attribute */
+  Description?: {
+    LocalizedLabels?: Array<{
+      Label?: string;
+      LanguageCode?: number;
+    }>;
+  };
+
+  /** Attribute type */
+  AttributeType?: string;
+
+  /** Is custom attribute */
+  IsCustomAttribute?: boolean;
+
+  /** Is managed */
+  IsManaged?: boolean;
+}
+
+/**
  * API response wrapper
  */
 export interface DataverseResponse<T> {

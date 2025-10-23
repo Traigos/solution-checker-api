@@ -14,6 +14,8 @@ export {
   Solution,
   SolutionQueryOptions,
   SolutionComponent,
+  Entity,
+  Attribute,
   DataverseResponse,
   DataverseError,
 } from './types/solution';

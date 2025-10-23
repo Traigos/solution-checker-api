@@ -80,6 +80,13 @@ export class HttpClient {
   }
 
   /**
+   * Perform PUT request
+   */
+  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.axiosInstance.put<T>(url, data, config);
+  }
+
+  /**
    * Perform PATCH request
    */
   async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
