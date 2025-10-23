@@ -69,6 +69,35 @@ export class WorkflowService {
   }
 
   /**
+   * Get workflows missing scope statement from a solution
+   * Identifies workflows that don't have a valid scope defined
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise with array of workflows missing scope
+   */
+  async flowsMissingScopeStatement(solutionId: string): Promise<Workflow[]> {
+    // Get all workflows from the solution with scope field
+    const workflows = await this.getWorkflowsFromSolutionId(solutionId, {
+      $select: ['workflowid', 'name', 'scope', 'category', 'type', 'primaryentity', 'statecode', 'statuscode']
+    });
+
+    // Filter workflows that have missing or invalid scope
+    // Valid scope values are:
+    // 1 = User
+    // 2 = Business Unit
+    // 3 = Parent: Child Business Units
+    // 4 = Organization
+    const workflowsMissingScope = workflows.filter(workflow => {
+      // Check if scope is missing (null/undefined) or invalid (not 1-4)
+      return workflow.scope === undefined ||
+             workflow.scope === null ||
+             workflow.scope < 1 ||
+             workflow.scope > 4;
+    });
+
+    return workflowsMissingScope;
+  }
+
+  /**
    * Validate that workflow email actions have 'from' and 'replyto' fields populated
    * Checks all workflows in a solution for email or approval actions
    * @param solutionId The unique identifier of the solution (GUID)
