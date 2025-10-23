@@ -48,8 +48,7 @@ export class SolutionService {
   async getSolutionByUniqueName(uniqueName: string, options?: SolutionQueryOptions): Promise<Solution | null> {
     const filterOptions: SolutionQueryOptions = {
       ...options,
-      // TODO: Update this filter based on actual field name in your schema
-      // $filter: `uniquename eq '${uniqueName}'`,
+      $filter: `uniquename eq '${uniqueName}'`,
     };
 
     const solutions = await this.getSolutions(filterOptions);
@@ -58,6 +57,7 @@ export class SolutionService {
 
   /**
    * Build query parameters from options
+   * Converts SolutionQueryOptions to OData query string
    */
   private buildQueryParams(options?: SolutionQueryOptions): string {
     if (!options) {
@@ -66,23 +66,40 @@ export class SolutionService {
 
     const params: string[] = [];
 
-    // TODO: Implement query parameter building based on your SolutionQueryOptions interface
-    // Example:
-    // if (options.$select && options.$select.length > 0) {
-    //   params.push(`$select=${options.$select.join(',')}`);
-    // }
-    // if (options.$filter) {
-    //   params.push(`$filter=${encodeURIComponent(options.$filter)}`);
-    // }
-    // if (options.$orderby) {
-    //   params.push(`$orderby=${options.$orderby}`);
-    // }
-    // if (options.$top) {
-    //   params.push(`$top=${options.$top}`);
-    // }
-    // if (options.$skip) {
-    //   params.push(`$skip=${options.$skip}`);
-    // }
+    // Build $select parameter for selecting specific fields
+    if (options.$select && options.$select.length > 0) {
+      params.push(`$select=${options.$select.join(',')}`);
+    }
+
+    // Build $filter parameter for filtering results
+    if (options.$filter) {
+      params.push(`$filter=${encodeURIComponent(options.$filter)}`);
+    }
+
+    // Build $orderby parameter for sorting results
+    if (options.$orderby) {
+      params.push(`$orderby=${options.$orderby}`);
+    }
+
+    // Build $expand parameter for expanding related entities
+    if (options.$expand && options.$expand.length > 0) {
+      params.push(`$expand=${options.$expand.join(',')}`);
+    }
+
+    // Build $top parameter for limiting results
+    if (options.$top !== undefined && options.$top > 0) {
+      params.push(`$top=${options.$top}`);
+    }
+
+    // Build $skip parameter for pagination
+    if (options.$skip !== undefined && options.$skip > 0) {
+      params.push(`$skip=${options.$skip}`);
+    }
+
+    // Build $count parameter to include total count
+    if (options.$count === true) {
+      params.push('$count=true');
+    }
 
     return params.length > 0 ? `?${params.join('&')}` : '';
   }
