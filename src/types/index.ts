@@ -4,3 +4,4 @@
  */
 
 export * from './solution';
+export * from './workflow';

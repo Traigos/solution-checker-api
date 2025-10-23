@@ -9,7 +9,7 @@ export { DataverseClient } from './dataverse-client';
 // Configuration
 export { DataverseClientConfig, DEFAULT_CONFIG } from './config/client-config';
 
-// Types
+// Types - Solution
 export {
   Solution,
   SolutionQueryOptions,
@@ -18,8 +18,18 @@ export {
   DataverseError,
 } from './types/solution';
 
+// Types - Workflow
+export {
+  Workflow,
+  WorkflowQueryOptions,
+  WorkflowActionStep,
+  EmailActionValidation,
+  ComponentType,
+} from './types/workflow';
+
 // Services
 export { SolutionService } from './services/solution-service';
+export { WorkflowService } from './services/workflow-service';
 
 // Utils
 export { HttpClient } from './utils/http-client';

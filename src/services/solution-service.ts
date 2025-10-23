@@ -1,5 +1,5 @@
 import { HttpClient } from '../utils/http-client';
-import { Solution, SolutionQueryOptions, DataverseResponse } from '../types/solution';
+import { Solution, SolutionQueryOptions, SolutionComponent, DataverseResponse } from '../types/solution';
 
 /**
  * Service for interacting with Dataverse Solutions
@@ -7,6 +7,7 @@ import { Solution, SolutionQueryOptions, DataverseResponse } from '../types/solu
 export class SolutionService {
   private httpClient: HttpClient;
   private readonly SOLUTIONS_ENDPOINT = '/solutions';
+  private readonly SOLUTION_COMPONENTS_ENDPOINT = '/solutioncomponents';
 
   constructor(httpClient: HttpClient) {
     this.httpClient = httpClient;
@@ -53,6 +54,28 @@ export class SolutionService {
 
     const solutions = await this.getSolutions(filterOptions);
     return solutions.length > 0 ? solutions[0] : null;
+  }
+
+  /**
+   * Get solution components by solution ID
+   * Retrieves all components that belong to a specific solution
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @param options Query options for filtering, selecting, and ordering
+   * @returns Promise with array of solution components
+   */
+  async getSolutionComponentsBySolutionId(solutionId: string, options?: SolutionQueryOptions): Promise<SolutionComponent[]> {
+    const filterOptions: SolutionQueryOptions = {
+      ...options,
+      $filter: options?.$filter
+        ? `_solutionid_value eq '${solutionId}' and (${options.$filter})`
+        : `_solutionid_value eq '${solutionId}'`
+    };
+
+    const queryParams = this.buildQueryParams(filterOptions);
+    const url = `${this.SOLUTION_COMPONENTS_ENDPOINT}${queryParams}`;
+
+    const response = await this.httpClient.get<DataverseResponse<SolutionComponent>>(url);
+    return response.data.value;
   }
 
   /**

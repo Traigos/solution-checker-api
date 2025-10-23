@@ -1,6 +1,7 @@
 import { DataverseClientConfig } from './config/client-config';
 import { HttpClient } from './utils/http-client';
 import { SolutionService } from './services/solution-service';
+import { WorkflowService } from './services/workflow-service';
 
 /**
  * Main Dataverse API client
@@ -10,6 +11,7 @@ export class DataverseClient {
 
   // Services
   public readonly solutions: SolutionService;
+  public readonly workflows: WorkflowService;
 
   /**
    * Create a new Dataverse client
@@ -20,6 +22,7 @@ export class DataverseClient {
 
     // Initialize services
     this.solutions = new SolutionService(this.httpClient);
+    this.workflows = new WorkflowService(this.httpClient);
   }
 
   /**
