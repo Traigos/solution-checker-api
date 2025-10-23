@@ -17,8 +17,8 @@ export class HttpClient {
     this.axiosInstance = axios.create({
       baseURL: `${this.config.baseUrl}/api/data/v${this.config.apiVersion}`,
       timeout: this.config.timeout,
+      withCredentials: this.config.useIntegratedAuth !== false, // Use integrated auth by default
       headers: {
-        'Authorization': `Bearer ${this.config.accessToken}`,
         'OData-MaxVersion': '4.0',
         'OData-Version': '4.0',
         'Accept': 'application/json',
@@ -80,6 +80,13 @@ export class HttpClient {
   }
 
   /**
+   * Perform PUT request
+   */
+  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.axiosInstance.put<T>(url, data, config);
+  }
+
+  /**
    * Perform PATCH request
    */
   async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
@@ -91,13 +98,5 @@ export class HttpClient {
    */
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.axiosInstance.delete<T>(url, config);
-  }
-
-  /**
-   * Update the access token
-   */
-  updateAccessToken(accessToken: string): void {
-    this.config.accessToken = accessToken;
-    this.axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
   }
 }

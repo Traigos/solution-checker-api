@@ -9,11 +9,6 @@ export interface DataverseClientConfig {
   baseUrl: string;
 
   /**
-   * Authentication token for API requests
-   */
-  accessToken: string;
-
-  /**
    * API version to use
    * @default "9.2"
    */
@@ -24,6 +19,12 @@ export interface DataverseClientConfig {
    * @default 30000
    */
   timeout?: number;
+
+  /**
+   * Use integrated authentication (Windows Authentication)
+   * @default true
+   */
+  useIntegratedAuth?: boolean;
 }
 
 /**
@@ -32,4 +33,5 @@ export interface DataverseClientConfig {
 export const DEFAULT_CONFIG: Partial<DataverseClientConfig> = {
   apiVersion: '9.2',
   timeout: 30000,
+  useIntegratedAuth: true,
 };
