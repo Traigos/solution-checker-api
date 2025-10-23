@@ -5,6 +5,7 @@ import { WorkflowService } from './services/workflow-service';
 
 /**
  * Main Dataverse API client
+ * Uses integrated authentication (Windows Authentication) by default
  */
 export class DataverseClient {
   private httpClient: HttpClient;
@@ -23,13 +24,5 @@ export class DataverseClient {
     // Initialize services
     this.solutions = new SolutionService(this.httpClient);
     this.workflows = new WorkflowService(this.httpClient);
-  }
-
-  /**
-   * Update the access token for authentication
-   * @param accessToken New access token
-   */
-  updateAccessToken(accessToken: string): void {
-    this.httpClient.updateAccessToken(accessToken);
   }
 }

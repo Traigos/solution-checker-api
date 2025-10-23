@@ -9,11 +9,12 @@ import { DataverseClient, DataverseClientConfig } from './src';
 
 async function main() {
   // Configure the client
+  // Uses integrated authentication (Windows Authentication) by default
   const config: DataverseClientConfig = {
     baseUrl: 'https://your-org.crm.dynamics.com',
-    accessToken: 'your-access-token-here',
     apiVersion: '9.2', // optional
     timeout: 30000, // optional
+    useIntegratedAuth: true, // optional (true by default)
   };
 
   // Create client instance
@@ -35,7 +36,7 @@ async function main() {
     // const solutionByName = await client.solutions.getSolutionByUniqueName('YourSolutionName');
     // console.log('Solution:', solutionByName);
 
-    // Example 4: Query with options (after defining SolutionQueryOptions)
+    // Example 4: Query with options
     // const filteredSolutions = await client.solutions.getSolutions({
     //   $select: ['solutionid', 'uniquename', 'friendlyname'],
     //   $filter: "ismanaged eq false",
@@ -43,8 +44,21 @@ async function main() {
     //   $top: 5,
     // });
 
-    // Example 5: Update access token
-    // client.updateAccessToken('new-access-token');
+    // Example 5: Get solution components by solution ID
+    // const components = await client.solutions.getSolutionComponentsBySolutionId('your-solution-id');
+    // console.log(`Found ${components.length} components`);
+
+    // Example 6: Get workflows from a solution
+    // const workflows = await client.workflows.getWorkflowsFromSolutionId('your-solution-id');
+    // console.log(`Found ${workflows.length} workflows`);
+
+    // Example 7: Validate workflow email actions
+    // const isValid = await client.workflows.validateWorkflowEmailActions('your-solution-id');
+    // console.log(`Email actions valid: ${isValid}`);
+
+    // Example 8: Update workflow email and approval actions
+    // await client.workflows.updateEmailAndApprovalWorkflowActions('your-workflow-id', 'admin@example.com');
+    // console.log('Workflow updated successfully');
 
   } catch (error) {
     console.error('Error:', error);
