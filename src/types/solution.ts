@@ -28,6 +28,7 @@ export interface Solution {
     publisherid?: string;
     uniquename?: string;
     friendlyname?: string;
+    customizationprefix?: string;
   };
 
   /** Description of the solution */

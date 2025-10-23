@@ -98,6 +98,64 @@ export class WorkflowService {
   }
 
   /**
+   * Check if all workflows in a solution are enabled/activated
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<boolean> - true if all workflows are enabled
+   */
+  async areAllWorkflowsEnabled(solutionId: string): Promise<boolean> {
+    // Get all workflows from the solution
+    const workflows = await this.getWorkflowsFromSolutionId(solutionId, {
+      $select: ['workflowid', 'name', 'statecode', 'statuscode', 'category']
+    });
+
+    if (workflows.length === 0) {
+      // No workflows means all are enabled (vacuous truth)
+      return true;
+    }
+
+    // Check if all workflows are activated
+    // statecode: 0 = Draft, 1 = Activated
+    // statuscode: 1 = Draft, 2 = Activated
+    for (const workflow of workflows) {
+      if (workflow.statecode !== 1 || workflow.statuscode !== 2) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if all business rules in a solution are activated
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<boolean> - true if all business rules are activated
+   */
+  async areAllBusinessRulesActivated(solutionId: string): Promise<boolean> {
+    // Get all workflows from the solution
+    // Business Rules are workflows with category = 2
+    const workflows = await this.getWorkflowsFromSolutionId(solutionId, {
+      $select: ['workflowid', 'name', 'statecode', 'statuscode', 'category'],
+      $filter: 'category eq 2'
+    });
+
+    if (workflows.length === 0) {
+      // No business rules means all are activated (vacuous truth)
+      return true;
+    }
+
+    // Check if all business rules are activated
+    // statecode: 0 = Draft, 1 = Activated
+    // statuscode: 1 = Draft, 2 = Activated
+    for (const workflow of workflows) {
+      if (workflow.statecode !== 1 || workflow.statuscode !== 2) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * Validate that workflow email actions have 'from' and 'replyto' fields populated
    * Checks all workflows in a solution for email or approval actions
    * @param solutionId The unique identifier of the solution (GUID)

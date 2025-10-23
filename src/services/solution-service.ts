@@ -1,5 +1,6 @@
 import { HttpClient } from '../utils/http-client';
 import { Solution, SolutionQueryOptions, SolutionComponent, DataverseResponse } from '../types/solution';
+import { ComponentType } from '../types/workflow';
 
 /**
  * Service for interacting with Dataverse Solutions
@@ -156,6 +157,229 @@ export class SolutionService {
     // Delete the solution component
     const url = `${this.SOLUTION_COMPONENTS_ENDPOINT}(${componentId})`;
     await this.httpClient.delete(url);
+  }
+
+  /**
+   * Check if solution display name contains "connection" or "connection reference"
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<boolean> - true if display name contains connection-related keywords
+   */
+  async doesSolutionHaveConnectionOrConnectionReferencesInDisplayName(solutionId: string): Promise<boolean> {
+    const solution = await this.getSolutionById(solutionId, {
+      $select: ['friendlyname', 'uniquename']
+    });
+
+    if (!solution.friendlyname) {
+      return false;
+    }
+
+    const displayName = solution.friendlyname.toLowerCase();
+    return displayName.includes('connection') || displayName.includes('connection reference');
+  }
+
+  /**
+   * Check if solution has connection reference components
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<boolean> - true if solution contains connection reference components
+   */
+  async doesSolutionHaveConnectionReferences(solutionId: string): Promise<boolean> {
+    const components = await this.getSolutionComponentsBySolutionId(solutionId, {
+      $filter: `componenttype eq ${ComponentType.ConnectionReference}`,
+      $select: ['solutioncomponentid', 'componenttype']
+    });
+
+    return components.length > 0;
+  }
+
+  /**
+   * Check if solution customizes components where publisher doesn't match solution publisher
+   * Identifies components that belong to a different publisher than the solution
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<boolean> - true if mismatched publishers found
+   */
+  async doesSolutionCustomizeComponentsWherePublisherDoesNotMatchSolutionPublisher(solutionId: string): Promise<boolean> {
+    // Get the solution with publisher information
+    const solution = await this.getSolutionById(solutionId, {
+      $select: ['solutionid', 'uniquename', 'publisheridname'],
+      $expand: ['publisherid($select=uniquename,customizationprefix)']
+    });
+
+    if (!solution.publisherid) {
+      // If no publisher info, we can't determine mismatch
+      return false;
+    }
+
+    const solutionPublisherPrefix = solution.publisherid.customizationprefix || solution.publisheridname;
+
+    if (!solutionPublisherPrefix) {
+      return false;
+    }
+
+    // Get all components in the solution
+    // We'll check entities and other customizable components
+    const components = await this.getSolutionComponentsBySolutionId(solutionId, {
+      $select: ['objectid', 'componenttype']
+    });
+
+    // Check entities (componenttype = 1) for publisher prefix mismatch
+    const entityComponents = components.filter(c => c.componenttype === ComponentType.Entity);
+
+    for (const component of entityComponents) {
+      if (component.objectid) {
+        // Get entity metadata to check publisher prefix
+        try {
+          const entityMetadataUrl = `/EntityDefinitions(${component.objectid})`;
+          const entityResponse = await this.httpClient.get<any>(entityMetadataUrl);
+          const entityData = entityResponse.data;
+
+          // Check if entity LogicalName starts with a different publisher prefix
+          if (entityData.LogicalName) {
+            const entityPrefix = entityData.LogicalName.split('_')[0];
+            if (entityPrefix && entityPrefix !== solutionPublisherPrefix) {
+              return true;
+            }
+          }
+        } catch (error) {
+          // Skip if we can't get entity metadata
+          continue;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if solution contains security roles that grant System Customizer or System Administrator privileges
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<boolean> - true if security roles grant System Customizer or System Admin access
+   */
+  async doesSecurityRoleGrantSystemCustomizerOrSystemAdmin(solutionId: string): Promise<boolean> {
+    // Get all security role components (componenttype = 20)
+    const components = await this.getSolutionComponentsBySolutionId(solutionId, {
+      $filter: `componenttype eq ${ComponentType.Role}`,
+      $select: ['objectid', 'componenttype']
+    });
+
+    if (components.length === 0) {
+      return false;
+    }
+
+    // Check each security role
+    for (const component of components) {
+      if (component.objectid) {
+        try {
+          // Get the security role details
+          const roleUrl = `/roles(${component.objectid})`;
+          const roleResponse = await this.httpClient.get<any>(roleUrl);
+          const role = roleResponse.data;
+
+          // Check if the role name indicates System Customizer or System Administrator
+          if (role.name) {
+            const roleName = role.name.toLowerCase();
+            if (roleName.includes('system customizer') ||
+                roleName.includes('system administrator') ||
+                roleName === 'system customizer' ||
+                roleName === 'system administrator') {
+              return true;
+            }
+          }
+
+          // Additionally, check role privileges for admin-level access
+          // System Administrator and System Customizer roles have specific privilege depths
+          // that indicate elevated permissions (typically Global depth on key entities)
+
+        } catch (error) {
+          // Skip if we can't get role details
+          continue;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if solution security roles grant access to tables outside of the publisher's scope
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise<boolean> - true if security roles grant access to tables from other publishers
+   */
+  async doesSecurityRoleGrantAccessToTableOutsideOfPublisher(solutionId: string): Promise<boolean> {
+    // Get the solution with publisher information
+    const solution = await this.getSolutionById(solutionId, {
+      $select: ['solutionid', 'uniquename', 'publisheridname'],
+      $expand: ['publisherid($select=uniquename,customizationprefix)']
+    });
+
+    if (!solution.publisherid) {
+      return false;
+    }
+
+    const solutionPublisherPrefix = solution.publisherid.customizationprefix || solution.publisheridname;
+
+    if (!solutionPublisherPrefix) {
+      return false;
+    }
+
+    // Get all security role components
+    const components = await this.getSolutionComponentsBySolutionId(solutionId, {
+      $filter: `componenttype eq ${ComponentType.Role}`,
+      $select: ['objectid', 'componenttype']
+    });
+
+    if (components.length === 0) {
+      return false;
+    }
+
+    // Check each security role's privileges
+    for (const component of components) {
+      if (component.objectid) {
+        try {
+          // Get role privileges
+          const privilegesUrl = `/roles(${component.objectid})/roleprivileges`;
+          const privilegesResponse = await this.httpClient.get<any>(privilegesUrl);
+          const privileges = privilegesResponse.data.value || [];
+
+          // Check each privilege to see if it grants access to entities outside the publisher
+          for (const privilege of privileges) {
+            // Get the privilege details to find the associated entity
+            if (privilege.privilegeid) {
+              try {
+                const privilegeUrl = `/privileges(${privilege.privilegeid})`;
+                const privilegeResponse = await this.httpClient.get<any>(privilegeUrl);
+                const privilegeData = privilegeResponse.data;
+
+                // Check if the privilege is for an entity
+                if (privilegeData.accessright && privilegeData.name) {
+                  // Entity privileges typically have names like "prvReadAccount", "prvCreateNew_customentity"
+                  // Extract entity name and check publisher prefix
+                  const entityMatch = privilegeData.name.match(/prv(?:Read|Write|Create|Delete|Append|AppendTo|Assign|Share)(.+)/);
+                  if (entityMatch && entityMatch[1]) {
+                    const entityLogicalName = entityMatch[1].toLowerCase();
+
+                    // Check if entity belongs to a different publisher
+                    if (entityLogicalName.includes('_')) {
+                      const entityPrefix = entityLogicalName.split('_')[0];
+                      if (entityPrefix !== solutionPublisherPrefix.toLowerCase()) {
+                        return true;
+                      }
+                    }
+                  }
+                }
+              } catch (error) {
+                // Skip if we can't get privilege details
+                continue;
+              }
+            }
+          }
+        } catch (error) {
+          // Skip if we can't get role privileges
+          continue;
+        }
+      }
+    }
+
+    return false;
   }
 
   /**

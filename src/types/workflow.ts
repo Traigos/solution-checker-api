@@ -256,7 +256,9 @@ export enum ComponentType {
   CustomControl = 66,
   CustomControlDefaultConfig = 68,
   DataSourceMapping = 166,
+  CanvasApp = 300,
   Connector = 371,
+  ConnectionReference = 372,
   EnvironmentVariableDefinition = 380,
   EnvironmentVariableValue = 381,
   AIProjectType = 400,
@@ -264,6 +266,5 @@ export enum ComponentType {
   AIConfiguration = 402,
   EntityAnalyticsConfig = 430,
   AttributeImageConfig = 431,
-  EntityImageConfig = 432,
-  CanvasApp = 300
+  EntityImageConfig = 432
 }
