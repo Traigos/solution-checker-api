@@ -1,7 +1,7 @@
 import { Solution, SolutionValidationResult } from './types';
 
-// API base URL - this would point to your backend API
-const API_BASE_URL = '/api';
+// API base URL - points to the backend API server
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 /**
  * Fetch all solutions from Dataverse
@@ -10,7 +10,8 @@ export async function fetchSolutions(): Promise<Solution[]> {
   const response = await fetch(`${API_BASE_URL}/solutions`);
 
   if (!response.ok) {
-    throw new Error('Failed to fetch solutions');
+    const error = await response.json().catch(() => ({ message: 'Failed to fetch solutions' }));
+    throw new Error(error.message || 'Failed to fetch solutions');
   }
 
   return response.json();
@@ -21,11 +22,28 @@ export async function fetchSolutions(): Promise<Solution[]> {
  */
 export async function validateSolution(solutionId: string): Promise<SolutionValidationResult> {
   const response = await fetch(`${API_BASE_URL}/solutions/${solutionId}/validate`, {
-    method: 'POST'
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
   });
 
   if (!response.ok) {
-    throw new Error('Failed to validate solution');
+    const error = await response.json().catch(() => ({ message: 'Failed to validate solution' }));
+    throw new Error(error.message || 'Failed to validate solution');
+  }
+
+  return response.json();
+}
+
+/**
+ * Check API health
+ */
+export async function checkHealth(): Promise<{ status: string; dataverseConfigured: boolean }> {
+  const response = await fetch(`${API_BASE_URL}/health`);
+
+  if (!response.ok) {
+    throw new Error('API is not available');
   }
 
   return response.json();

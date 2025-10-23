@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { SolutionList } from './components/SolutionList';
 import { ValidationResults } from './components/ValidationResults';
 import { Solution, SolutionValidationResult } from './types';
