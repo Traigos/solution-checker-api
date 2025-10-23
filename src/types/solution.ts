@@ -108,6 +108,9 @@ export interface SolutionComponent {
   /** Solution identifier that this component belongs to */
   solutionid?: string;
 
+  /** OData lookup value for solution ID */
+  _solutionid_value?: string;
+
   /** Type of the component (entity, workflow, web resource, etc.) */
   componenttype?: number;
 
