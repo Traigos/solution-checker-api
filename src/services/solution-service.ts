@@ -599,6 +599,67 @@ export class SolutionService {
   }
 
   /**
+   * Get Solution Checker results for a solution
+   * Retrieves analysis results including issues found by Solution Checker
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise with array of solution checker results
+   */
+  async getSolutionCheckerResults(solutionId: string): Promise<any[]> {
+    try {
+      // Query for analysis results related to this solution
+      const resultsUrl = `/msdyn_analysisresults?$filter=_msdyn_solutionhealthruleset_value eq '${solutionId}'&$orderby=createdon desc`;
+
+      const response = await this.httpClient.get<DataverseResponse<any>>(resultsUrl);
+      return response.data.value || [];
+    } catch (error: any) {
+      if (error.response && (error.response.status === 404 || error.response.status === 401)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get detailed Solution Checker analysis components for a solution
+   * Retrieves component-level analysis results
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise with array of analysis components
+   */
+  async getSolutionCheckerAnalysisComponents(solutionId: string): Promise<any[]> {
+    try {
+      const componentsUrl = `/msdyn_analysiscomponents?$filter=_msdyn_solutionid_value eq '${solutionId}'&$orderby=createdon desc`;
+
+      const response = await this.httpClient.get<DataverseResponse<any>>(componentsUrl);
+      return response.data.value || [];
+    } catch (error: any) {
+      if (error.response && (error.response.status === 404 || error.response.status === 401)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get Solution Checker analysis jobs for a solution
+   * Retrieves the history of analysis jobs run on the solution
+   * @param solutionId The unique identifier of the solution (GUID)
+   * @returns Promise with array of analysis jobs
+   */
+  async getSolutionCheckerJobs(solutionId: string): Promise<any[]> {
+    try {
+      const jobsUrl = `/msdyn_analysisjobs?$filter=_msdyn_solutionhealthruleset_value eq '${solutionId}'&$orderby=createdon desc`;
+
+      const response = await this.httpClient.get<DataverseResponse<any>>(jobsUrl);
+      return response.data.value || [];
+    } catch (error: any) {
+      if (error.response && (error.response.status === 404 || error.response.status === 401)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Get a solution component by ID
    * @param componentId The unique identifier of the solution component
    * @returns Promise with the solution component or null if not found
