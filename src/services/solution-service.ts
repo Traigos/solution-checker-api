@@ -1,5 +1,17 @@
 import { HttpClient } from '../utils/http-client';
-import { Solution, SolutionQueryOptions, SolutionComponent, DataverseResponse, Entity, Attribute } from '../types/solution';
+import {
+  Solution,
+  SolutionQueryOptions,
+  SolutionComponent,
+  DataverseResponse,
+  Entity,
+  Attribute,
+  ImportSolutionRequest,
+  ImportSolutionResult,
+  AsyncImportJob,
+  ExportSolutionOptions,
+  ExportSolutionResult
+} from '../types/solution';
 import { ComponentType } from '../types/workflow';
 
 /**
@@ -628,6 +640,255 @@ export class SolutionService {
 
     const response = await this.httpClient.get<DataverseResponse<SolutionComponent>>(url);
     return response.data.value;
+  }
+
+  /**
+   * Import a solution from a file
+   * @param solutionFile Base64 encoded solution file content or Buffer
+   * @param options Import options (overwrite, publish workflows, etc.)
+   * @returns Promise with import result including job ID
+   */
+  async importSolution(
+    solutionFile: string | Buffer,
+    options?: Partial<ImportSolutionRequest>
+  ): Promise<ImportSolutionResult> {
+    // Convert Buffer to base64 if needed
+    const base64Content = Buffer.isBuffer(solutionFile)
+      ? solutionFile.toString('base64')
+      : solutionFile;
+
+    const request: ImportSolutionRequest = {
+      CustomizationFile: base64Content,
+      OverwriteUnmanagedCustomizations: options?.OverwriteUnmanagedCustomizations ?? false,
+      PublishWorkflows: options?.PublishWorkflows ?? true,
+      ConvertToManaged: options?.ConvertToManaged ?? false,
+      SkipProductUpdateDependencies: options?.SkipProductUpdateDependencies ?? false,
+      HoldingSolution: options?.HoldingSolution ?? false,
+      ...options
+    };
+
+    const response = await this.httpClient.post<ImportSolutionResult>(
+      '/ImportSolution',
+      request
+    );
+
+    return response.data;
+  }
+
+  /**
+   * Import a solution asynchronously
+   * This method starts an async import job and returns the job ID immediately
+   * Use getImportJobStatus to check the progress
+   * @param solutionFile Base64 encoded solution file content or Buffer
+   * @param options Import options
+   * @returns Promise with import job ID
+   */
+  async importSolutionAsync(
+    solutionFile: string | Buffer,
+    options?: Partial<ImportSolutionRequest>
+  ): Promise<string> {
+    // Convert Buffer to base64 if needed
+    const base64Content = Buffer.isBuffer(solutionFile)
+      ? solutionFile.toString('base64')
+      : solutionFile;
+
+    const importJobId = this.generateGuid();
+
+    const request: ImportSolutionRequest = {
+      CustomizationFile: base64Content,
+      ImportJobId: importJobId,
+      OverwriteUnmanagedCustomizations: options?.OverwriteUnmanagedCustomizations ?? false,
+      PublishWorkflows: options?.PublishWorkflows ?? true,
+      ConvertToManaged: options?.ConvertToManaged ?? false,
+      SkipProductUpdateDependencies: options?.SkipProductUpdateDependencies ?? false,
+      HoldingSolution: options?.HoldingSolution ?? false,
+      ...options
+    };
+
+    await this.httpClient.post('/ImportSolutionAsync', request);
+
+    return importJobId;
+  }
+
+  /**
+   * Get the status of an async import job
+   * @param importJobId The import job ID returned from importSolutionAsync
+   * @returns Promise with import job details including progress and status
+   */
+  async getImportJobStatus(importJobId: string): Promise<AsyncImportJob | null> {
+    try {
+      const url = `/importjobs(${importJobId})?$select=importjobid,progress,statuscode,data,solutionname,completedon,createdon`;
+      const response = await this.httpClient.get<AsyncImportJob>(url);
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Wait for an async import job to complete
+   * Polls the import job status until it completes, fails, or times out
+   * @param importJobId The import job ID
+   * @param pollIntervalMs Polling interval in milliseconds (default: 5000)
+   * @param timeoutMs Timeout in milliseconds (default: 300000 = 5 minutes)
+   * @returns Promise with final import job status
+   */
+  async waitForImportCompletion(
+    importJobId: string,
+    pollIntervalMs: number = 5000,
+    timeoutMs: number = 300000
+  ): Promise<AsyncImportJob> {
+    const startTime = Date.now();
+
+    while (true) {
+      const job = await this.getImportJobStatus(importJobId);
+
+      if (!job) {
+        throw new Error(`Import job ${importJobId} not found`);
+      }
+
+      // Status codes: 0=InProgress, 1=Completed, 2=Failed, 3=Canceled
+      if (job.statuscode === 1) {
+        return job; // Completed successfully
+      }
+
+      if (job.statuscode === 2) {
+        throw new Error(`Import job failed: ${job.data || 'Unknown error'}`);
+      }
+
+      if (job.statuscode === 3) {
+        throw new Error('Import job was canceled');
+      }
+
+      // Check timeout
+      if (Date.now() - startTime > timeoutMs) {
+        throw new Error(`Import job timed out after ${timeoutMs}ms`);
+      }
+
+      // Wait before next poll
+      await this.sleep(pollIntervalMs);
+    }
+  }
+
+  /**
+   * Export a solution to a file
+   * @param solutionName Unique name of the solution to export
+   * @param managed Export as managed solution (default: false)
+   * @param options Additional export options
+   * @returns Promise with base64 encoded solution file
+   */
+  async exportSolution(
+    solutionName: string,
+    managed: boolean = false,
+    options?: Partial<ExportSolutionOptions>
+  ): Promise<string> {
+    const request: ExportSolutionOptions = {
+      SolutionName: solutionName,
+      Managed: managed,
+      ExportAutoNumberingSettings: options?.ExportAutoNumberingSettings ?? false,
+      ExportCalendarSettings: options?.ExportCalendarSettings ?? false,
+      ExportCustomizationSettings: options?.ExportCustomizationSettings ?? false,
+      ExportEmailTrackingSettings: options?.ExportEmailTrackingSettings ?? false,
+      ExportGeneralSettings: options?.ExportGeneralSettings ?? false,
+      ExportMarketingSettings: options?.ExportMarketingSettings ?? false,
+      ExportOutlookSynchronizationSettings: options?.ExportOutlookSynchronizationSettings ?? false,
+      ExportRelationshipRoles: options?.ExportRelationshipRoles ?? false,
+      ExportIsvConfig: options?.ExportIsvConfig ?? false,
+      ExportSales: options?.ExportSales ?? false,
+      ExportExternalApplications: options?.ExportExternalApplications ?? false,
+      ...options
+    };
+
+    const response = await this.httpClient.post<ExportSolutionResult>(
+      '/ExportSolution',
+      request
+    );
+
+    if (!response.data.ExportSolutionFile) {
+      throw new Error('Export failed: No solution file returned');
+    }
+
+    return response.data.ExportSolutionFile;
+  }
+
+  /**
+   * Delete a solution
+   * @param solutionId The unique identifier of the solution to delete
+   * @returns Promise that resolves when the solution is deleted
+   */
+  async deleteSolution(solutionId: string): Promise<void> {
+    const url = `${this.SOLUTIONS_ENDPOINT}(${solutionId})`;
+    await this.httpClient.delete(url);
+  }
+
+  /**
+   * Delete a solution by unique name
+   * @param uniqueName The unique name of the solution to delete
+   * @returns Promise that resolves when the solution is deleted
+   */
+  async deleteSolutionByUniqueName(uniqueName: string): Promise<void> {
+    const solution = await this.getSolutionByUniqueName(uniqueName);
+
+    if (!solution || !solution.solutionid) {
+      throw new Error(`Solution with unique name '${uniqueName}' not found`);
+    }
+
+    await this.deleteSolution(solution.solutionid);
+  }
+
+  /**
+   * Clone/copy a solution as a new patch solution
+   * @param parentSolutionUniqueName The unique name of the parent solution to clone
+   * @param newUniqueName Unique name for the new patch solution
+   * @param newFriendlyName Display name for the new patch solution
+   * @param newVersionNumber Version number for the patch (optional)
+   * @returns Promise with the new solution
+   */
+  async cloneSolution(
+    parentSolutionUniqueName: string,
+    newUniqueName: string,
+    newFriendlyName: string,
+    newVersionNumber?: string
+  ): Promise<Solution> {
+    const request: any = {
+      ParentSolutionUniqueName: parentSolutionUniqueName,
+      DisplayName: newFriendlyName,
+      UniqueName: newUniqueName
+    };
+
+    if (newVersionNumber) {
+      request.VersionNumber = newVersionNumber;
+    }
+
+    const response = await this.httpClient.post<Solution>(
+      '/CloneSolution',
+      request
+    );
+
+    return response.data;
+  }
+
+  /**
+   * Generate a GUID for use in requests
+   * @private
+   */
+  private generateGuid(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  /**
+   * Sleep/wait for a specified duration
+   * @private
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**

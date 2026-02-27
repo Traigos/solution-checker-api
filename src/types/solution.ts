@@ -244,3 +244,137 @@ export interface DataverseError {
     message: string;
   };
 }
+
+/**
+ * Solution import options
+ */
+export interface ImportSolutionOptions {
+  /** Indicates whether to overwrite customizations */
+  OverwriteUnmanagedCustomizations?: boolean;
+
+  /** Indicates whether to publish workflows */
+  PublishWorkflows?: boolean;
+
+  /** Import job ID (for tracking async imports) */
+  ImportJobId?: string;
+
+  /** Convert to managed solution on import */
+  ConvertToManaged?: boolean;
+
+  /** Skip product update dependencies */
+  SkipProductUpdateDependencies?: boolean;
+
+  /** Hold solution to be upgraded until apply */
+  HoldingSolution?: boolean;
+}
+
+/**
+ * Solution import request
+ */
+export interface ImportSolutionRequest extends ImportSolutionOptions {
+  /** Base64 encoded solution file content */
+  CustomizationFile: string;
+}
+
+/**
+ * Solution import result
+ */
+export interface ImportSolutionResult {
+  /** Import job ID for tracking the import */
+  ImportJobId?: string;
+
+  /** Indicates whether the import was successful */
+  Success?: boolean;
+
+  /** Error message if import failed */
+  ErrorText?: string;
+}
+
+/**
+ * Async import job result
+ */
+export interface AsyncImportJob {
+  /** Import job ID */
+  importjobid?: string;
+
+  /** Progress percentage (0-100) */
+  progress?: number;
+
+  /** Status code (0=InProgress, 1=Completed, 2=Failed, 3=Canceled) */
+  statuscode?: number;
+
+  /** Data containing result information */
+  data?: string;
+
+  /** Solution name being imported */
+  solutionname?: string;
+
+  /** Completed on date/time */
+  completedon?: string;
+
+  /** Created on date/time */
+  createdon?: string;
+}
+
+/**
+ * Solution export options
+ */
+export interface ExportSolutionOptions {
+  /** Unique name of the solution to export */
+  SolutionName: string;
+
+  /** Export as managed solution */
+  Managed?: boolean;
+
+  /** Include version in the solution file name */
+  ExportAutoNumberingSettings?: boolean;
+
+  /** Include calendar settings */
+  ExportCalendarSettings?: boolean;
+
+  /** Include customization */
+  ExportCustomizationSettings?: boolean;
+
+  /** Include email tracking settings */
+  ExportEmailTrackingSettings?: boolean;
+
+  /** Include general settings */
+  ExportGeneralSettings?: boolean;
+
+  /** Include marketing settings */
+  ExportMarketingSettings?: boolean;
+
+  /** Include outlook synchronization settings */
+  ExportOutlookSynchronizationSettings?: boolean;
+
+  /** Include relationship roles */
+  ExportRelationshipRoles?: boolean;
+
+  /** Include ISV config */
+  ExportIsvConfig?: boolean;
+
+  /** Include sales settings */
+  ExportSales?: boolean;
+
+  /** Include external applications */
+  ExportExternalApplications?: boolean;
+}
+
+/**
+ * Solution export result
+ */
+export interface ExportSolutionResult {
+  /** Base64 encoded solution file content */
+  ExportSolutionFile?: string;
+}
+
+/**
+ * Solution delete result
+ */
+export interface DeleteSolutionResult {
+  /** Indicates whether the delete was successful */
+  Success: boolean;
+
+  /** Error message if delete failed */
+  ErrorMessage?: string;
+}
