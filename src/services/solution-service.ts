@@ -512,7 +512,7 @@ export class SolutionService {
 
           // Check if description is missing or empty
           const hasDescription = entity.Description?.LocalizedLabels?.some(
-            label => label.Label && label.Label.trim().length > 0
+            (label: { Label?: string }) => label.Label && label.Label.trim().length > 0
           );
 
           if (!hasDescription) {

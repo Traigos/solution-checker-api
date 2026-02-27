@@ -34,14 +34,14 @@ export class WorkflowService {
 
     // Get the workflow IDs from solution components
     const componentsResponse = await this.httpClient.get<DataverseResponse<{ objectid: string }>>(componentsUrl);
-    const workflowIds = componentsResponse.data.value.map(c => c.objectid);
+    const workflowIds = componentsResponse.data.value.map((c: { objectid: string }) => c.objectid);
 
     if (workflowIds.length === 0) {
       return [];
     }
 
     // Build filter for workflows using the IDs
-    const workflowFilter = workflowIds.map(id => `workflowid eq ${id}`).join(' or ');
+    const workflowFilter = workflowIds.map((id: string) => `workflowid eq ${id}`).join(' or ');
     const workflowOptions: WorkflowQueryOptions = {
       ...options,
       $filter: options?.$filter ? `(${workflowFilter}) and (${options.$filter})` : workflowFilter

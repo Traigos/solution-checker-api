@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { DataverseClientConfig, DEFAULT_CONFIG } from '../config/client-config';
 
 /**
@@ -35,20 +35,20 @@ export class HttpClient {
   private setupInterceptors(): void {
     // Request interceptor
     this.axiosInstance.interceptors.request.use(
-      (config) => {
+      (config: InternalAxiosRequestConfig) => {
         return config;
       },
-      (error) => {
+      (error: any) => {
         return Promise.reject(error);
       }
     );
 
     // Response interceptor
     this.axiosInstance.interceptors.response.use(
-      (response) => {
+      (response: AxiosResponse) => {
         return response;
       },
-      (error) => {
+      (error: any) => {
         if (error.response) {
           // Server responded with error status
           const { status, data } = error.response;
